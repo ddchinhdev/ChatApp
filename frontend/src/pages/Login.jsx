@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import api from '../api'
+import { useAuth } from '../auth/AuthContext'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { login } = useAuth()
   const [form, setForm] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,9 +18,8 @@ export default function Login() {
 
     try {
       const { data } = await api.post('/auth/login', form)
-      localStorage.setItem('chatapp_token', data.token)
-      localStorage.setItem('chatapp_user', JSON.stringify(data.user))
-      navigate('/chat')
+      login(data)
+      navigate(location.state?.from || '/chat', { replace: true })
     } catch (err) {
       setError(err.response?.data?.message || 'Đăng nhập thất bại')
     } finally {
@@ -31,16 +33,24 @@ export default function Login() {
         <h1>ChatApp</h1>
         <p className="subtitle">Đăng nhập</p>
 
-        <label>Username</label>
+        <label htmlFor="login-username">Username</label>
         <input
+          id="login-username"
+          name="username"
+          autoComplete="username"
+          required
           value={form.username}
           onChange={e => setForm({ ...form, username: e.target.value })}
           placeholder="Nhập username"
         />
 
-        <label>Password</label>
+        <label htmlFor="login-password">Password</label>
         <input
+          id="login-password"
+          name="password"
           type="password"
+          autoComplete="current-password"
+          required
           value={form.password}
           onChange={e => setForm({ ...form, password: e.target.value })}
           placeholder="Nhập password"

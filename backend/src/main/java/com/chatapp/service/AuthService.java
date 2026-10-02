@@ -4,6 +4,7 @@ import com.chatapp.dto.auth.*;
 import com.chatapp.dto.user.UserResponse;
 import com.chatapp.entity.User;
 import com.chatapp.exception.BusinessException;
+import com.chatapp.mapper.UserMapper;
 import com.chatapp.repository.UserRepository;
 import com.chatapp.security.JwtService;
 import org.springframework.http.HttpStatus;
@@ -17,40 +18,46 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final UserMapper userMapper;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       UserMapper userMapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.userMapper = userMapper;
     }
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.existsByUsername(request.username())) {
+        String username = request.username().trim();
+        String email = request.email().trim().toLowerCase();
+
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
             throw new BusinessException("Username already exists", HttpStatus.CONFLICT);
         }
-        if (userRepository.existsByEmail(request.email())) {
+        if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new BusinessException("Email already exists", HttpStatus.CONFLICT);
         }
 
         User user = new User();
-        user.setUsername(request.username().trim());
-        user.setEmail(request.email().trim().toLowerCase());
+        user.setUsername(username);
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.password()));
-        user.setDisplayName(request.username().trim());
+        user.setDisplayName(username);
 
         userRepository.save(user);
 
         return new AuthResponse(
                 jwtService.generateToken(user.getUsername()),
-                UserResponse.from(user)
+                userMapper.toCurrentUserResponse(user)
         );
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.username())
+        User user = userRepository.findByUsernameIgnoreCase(request.username().trim())
                 .orElseThrow(() -> new BusinessException(
                         "Invalid username or password", HttpStatus.UNAUTHORIZED));
 
@@ -65,7 +72,7 @@ public class AuthService {
 
         return new AuthResponse(
                 jwtService.generateToken(user.getUsername()),
-                UserResponse.from(user)
+                userMapper.toCurrentUserResponse(user)
         );
     }
 }

@@ -25,6 +25,16 @@ public class ConversationMember {
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
 
+    @Column(name = "last_delivered_message_id")
+    private Long lastDeliveredMessageId;
+
+    @Column(name = "last_read_message_id")
+    private Long lastReadMessageId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "group_role", nullable = false, length = 20)
+    private GroupRole groupRole = GroupRole.MEMBER;
+
     @PrePersist
     void onCreate() {
         joinedAt = LocalDateTime.now();
@@ -34,7 +44,13 @@ public class ConversationMember {
     public Conversation getConversation() { return conversation; }
     public User getUser() { return user; }
     public LocalDateTime getJoinedAt() { return joinedAt; }
+    public Long getLastDeliveredMessageId() { return lastDeliveredMessageId; }
+    public Long getLastReadMessageId() { return lastReadMessageId; }
+    public GroupRole getGroupRole() { return groupRole; }
 
     public void setConversation(Conversation conversation) { this.conversation = conversation; }
     public void setUser(User user) { this.user = user; }
+    public void setLastDeliveredMessageId(Long value) { this.lastDeliveredMessageId = value; }
+    public void setLastReadMessageId(Long value) { this.lastReadMessageId = value; }
+    public void setGroupRole(GroupRole groupRole) { this.groupRole = groupRole; }
 }

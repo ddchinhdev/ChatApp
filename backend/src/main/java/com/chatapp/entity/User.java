@@ -26,6 +26,12 @@ public class User {
     @Column(name = "display_name", length = 100)
     private String displayName;
 
+    @Column(length = 500)
+    private String bio;
+
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role = Role.USER;
@@ -38,6 +44,9 @@ public class User {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @Column(name = "last_seen_at")
+    private LocalDateTime lastSeenAt;
 
     @PrePersist
     void onCreate() {
@@ -59,15 +68,21 @@ public class User {
     public String getEmail() { return email; }
     public String getPassword() { return password; }
     public String getDisplayName() { return displayName; }
+    public String getBio() { return bio; }
+    public String getAvatarUrl() { return avatarUrl; }
     public Role getRole() { return role; }
     public Boolean getActive() { return active; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public LocalDateTime getLastSeenAt() { return lastSeenAt; }
 
     public void setUsername(String username) { this.username = username; }
     public void setEmail(String email) { this.email = email; }
     public void setPassword(String password) { this.password = password; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public void setBio(String bio) { this.bio = bio; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     public void setRole(Role role) { this.role = role; }
     public void setActive(Boolean active) { this.active = active; }
+    public void setLastSeenAt(LocalDateTime lastSeenAt) { this.lastSeenAt = lastSeenAt; }
 }

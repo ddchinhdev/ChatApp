@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
@@ -22,4 +23,8 @@ public interface ConversationMemberRepository extends JpaRepository<Conversation
     @Query("select cm from ConversationMember cm where cm.conversation.id = :conversationId and cm.user.id = :userId")
     Optional<ConversationMember> findForUpdate(@Param("conversationId") Long conversationId,
                                                @Param("userId") Long userId);
+
+    @Modifying(flushAutomatically = true)
+    @Query("delete from ConversationMember cm where cm.conversation.id = :conversationId")
+    void deleteAllByConversationId(@Param("conversationId") Long conversationId);
 }

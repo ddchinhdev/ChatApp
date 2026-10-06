@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import api from '../api'
 import { useAuth } from '../auth/AuthContext'
+import PasswordField from '../components/PasswordField'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -44,11 +45,10 @@ export default function Login() {
           placeholder="Nhập username"
         />
 
-        <label htmlFor="login-password">Password</label>
-        <input
+        <PasswordField
           id="login-password"
+          label="Mật khẩu"
           name="password"
-          type="password"
           autoComplete="current-password"
           required
           value={form.password}
@@ -56,7 +56,7 @@ export default function Login() {
           placeholder="Nhập password"
         />
 
-        {error && <div className="error">{error}</div>}
+        {error && <div className="error" role="alert">{error}</div>}
 
         <button disabled={loading}>
           {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}

@@ -24,6 +24,7 @@ import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -51,6 +52,14 @@ class ConversationControllerIntegrationTest {
     void createsDirectConversationAndReturnsSafeDto() throws Exception {
         Account alice = register("alice", "alice@example.com");
         Account bob = register("bob", "bob@example.com");
+        User bobUser = userRepository.findById(bob.id()).orElseThrow();
+        bobUser.setBio("Backend developer");
+        userRepository.saveAndFlush(bobUser);
+        mockMvc.perform(post("/api/conversations/groups")
+                        .header("Authorization", bearer(alice.token()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Nhóm chung\",\"memberIds\":[" + bob.id() + "]}"))
+                .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/conversations/direct/{userId}", bob.id())
                         .header("Authorization", bearer(alice.token())))
@@ -58,8 +67,25 @@ class ConversationControllerIntegrationTest {
                 .andExpect(jsonPath("$.type").value("DIRECT"))
                 .andExpect(jsonPath("$.otherUser.id").value(bob.id()))
                 .andExpect(jsonPath("$.otherUser.username").value("bob"))
+                .andExpect(jsonPath("$.otherUser.bio").value("Backend developer"))
+                .andExpect(jsonPath("$.otherUser.commonGroupCount").value(1))
                 .andExpect(jsonPath("$.directConversationKey").doesNotExist())
                 .andExpect(jsonPath("$.members").doesNotExist());
+    }
+
+    @Test
+    void deletesDirectConversationAndKeepsAccountAuthenticated() throws Exception {
+        Account alice = register("delete_a", "delete.a@example.com");
+        Account bob = register("delete_b", "delete.b@example.com");
+        long id = create(alice, bob, 201);
+
+        mockMvc.perform(delete("/api/conversations/{id}", id)
+                        .header("Authorization", bearer(alice.token())))
+                .andExpect(status().isNoContent());
+
+        assertThat(conversationRepository.existsById(id)).isFalse();
+        mockMvc.perform(get("/api/conversations").header("Authorization", bearer(alice.token())))
+                .andExpect(status().isOk());
     }
 
     @Test

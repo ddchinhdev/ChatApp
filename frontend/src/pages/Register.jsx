@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../api'
 import { useAuth } from '../auth/AuthContext'
+import PasswordField from '../components/PasswordField'
 
 export default function Register() {
   const navigate = useNavigate()
@@ -59,11 +60,10 @@ export default function Register() {
           placeholder="you@example.com"
         />
 
-        <label htmlFor="register-password">Password</label>
-        <input
+        <PasswordField
           id="register-password"
+          label="Mật khẩu"
           name="password"
-          type="password"
           autoComplete="new-password"
           required
           minLength={8}

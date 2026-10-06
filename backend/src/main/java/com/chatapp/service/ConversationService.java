@@ -97,6 +97,24 @@ public class ConversationService {
                 .sum();
     }
 
+    @Transactional
+    public void deleteDirect(String username, Long conversationId) {
+        User currentUser = requireUser(username);
+        Conversation conversation = conversationRepository.findByIdForUpdate(conversationId)
+                .orElseThrow(() -> new BusinessException("Conversation not found", HttpStatus.NOT_FOUND));
+        if (Boolean.TRUE.equals(conversation.getGroup())) {
+            throw new BusinessException("Use leave group for group conversations", HttpStatus.BAD_REQUEST);
+        }
+        if (!memberRepository.existsByConversationIdAndUserId(conversationId, currentUser.getId())) {
+            throw new BusinessException("You are not a member of this conversation", HttpStatus.FORBIDDEN);
+        }
+        conversation.setLastMessage(null);
+        conversationRepository.saveAndFlush(conversation);
+        memberRepository.deleteAllByConversationId(conversationId);
+        messageRepository.deleteAllByConversationId(conversationId);
+        conversationRepository.deleteConversationById(conversationId);
+    }
+
     private Conversation createDirect(Long currentUserId, Long targetUserId, String key) {
         Conversation conversation = new Conversation();
         conversation.setGroup(false);
@@ -133,7 +151,9 @@ public class ConversationService {
                     .filter(user -> !user.getId().equals(currentUserId)).findFirst()
                     .orElseThrow(() -> new IllegalStateException("Direct conversation must have another member"));
             otherResponse = new ConversationUserResponse(other.getId(), other.getUsername(), other.getDisplayName(),
-                    other.getAvatarUrl(), presenceService.isOnline(other.getId()), other.getLastSeenAt() == null ? null
+                    other.getAvatarUrl(), other.getBio(),
+                    conversationRepository.countCommonGroups(currentUserId, other.getId()),
+                    presenceService.isOnline(other.getId()), other.getLastSeenAt() == null ? null
                     : other.getLastSeenAt().toInstant(ZoneOffset.UTC));
         }
         return new ConversationResponse(

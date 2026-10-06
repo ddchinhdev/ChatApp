@@ -6,6 +6,7 @@ import com.chatapp.service.ConversationService;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,5 +47,11 @@ public class ConversationController {
     @GetMapping("/unread-count")
     public UnreadTotalResponse unreadTotal(Authentication authentication) {
         return new UnreadTotalResponse(conversationService.totalUnread(authentication.getName()));
+    }
+
+    @DeleteMapping("/{conversationId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteDirect(@PathVariable Long conversationId, Authentication authentication) {
+        conversationService.deleteDirect(authentication.getName(), conversationId);
     }
 }

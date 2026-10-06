@@ -92,6 +92,21 @@ class GroupControllerIntegrationTest {
     }
 
     @Test
+    void soleOwnerCanLeaveGroupWithMessagesWithoutLosingAuthentication() throws Exception {
+        Account owner = register("sole_owner");
+        long groupId = createGroup(owner);
+        send(groupId, owner, "Tin nhắn trước khi rời", 201);
+
+        mockMvc.perform(post("/api/conversations/{id}/leave", groupId)
+                        .header("Authorization", bearer(owner.token())))
+                .andExpect(status().isNoContent());
+
+        assertThat(conversations.existsById(groupId)).isFalse();
+        mockMvc.perform(get("/api/conversations").header("Authorization", bearer(owner.token())))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void removedMemberCannotReadOrSendAndDuplicateMembershipIsRejected() throws Exception {
         Account owner = register("remove_owner");
         Account member = register("remove_member");

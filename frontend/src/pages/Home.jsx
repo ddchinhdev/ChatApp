@@ -38,6 +38,18 @@ export default function Home() {
   }, [])
 
   const selected = conversations.find(item => String(item.id) === selectedId)
+  useEffect(() => {
+    if (!loading && selectedId && !selected) {
+      setSearchParams({}, { replace: true })
+    }
+  }, [loading, selected, selectedId, setSearchParams])
+
+  const removeLeftConversation = conversationId => {
+    const remaining = conversations.filter(item => item.id !== conversationId)
+    setConversations(remaining)
+    const nextConversation = remaining[0]
+    setSearchParams(nextConversation ? { conversation: nextConversation.id } : {}, { replace: true })
+  }
   const recordLastMessage = (message, countUnread = false) => setConversations(current => current
     .map(item => item.id === message.conversationId ? {
       ...item,
@@ -94,14 +106,15 @@ export default function Home() {
 
   return <div className="home-page">
     <AppHeader />
-    <main className={`chat-layout ${selected ? 'has-selection' : ''}`}>
-      <aside className="conversation-sidebar">
+    <main id="main-content" className={`chat-layout ${selected ? 'has-selection' : ''}`} tabIndex="-1">
+      <aside className="conversation-sidebar" aria-label="Danh sách cuộc trò chuyện">
         <div className="conversation-heading"><div><span className="eyebrow">Tin nhắn</span><h1>Trò chuyện {totalUnread > 0 && <span className="total-unread">{totalUnread}</span>}</h1></div><div className="heading-actions"><button className="icon-button" onClick={() => setShowCreateGroup(true)} aria-label="Tạo nhóm" title="Tạo nhóm"><Icon name="users"/></button><Link className="icon-button primary" to="/users" aria-label="Tìm người để trò chuyện" title="Tìm người"><Icon name="plus"/></Link></div></div>
-        {loading && <div className="conversation-skeleton" aria-label="Đang tải cuộc trò chuyện">{[1,2,3,4,5].map(item => <div className="skeleton-row" key={item}><i/><span><b/><b/></span></div>)}</div>}
+        {loading && <div className="conversation-skeleton" aria-label="Đang tải cuộc trò chuyện" aria-busy="true" role="status">{[1,2,3,4,5].map(item => <div className="skeleton-row" key={item} aria-hidden="true"><i/><span><b/><b/></span></div>)}</div>}
         {error && <div className="error" role="alert">{error}</div>}
         {!loading && !error && conversations.length === 0 && <div className="sidebar-state"><span className="empty-icon"><Icon name="chat" size={28}/></span><strong>Chưa có cuộc trò chuyện</strong><p>Tìm một người bạn và gửi lời chào đầu tiên.</p><Link className="text-link" to="/users">Tìm người dùng</Link></div>}
         {!loading && !error && conversations.map(conversation => <button key={conversation.id}
           className={`conversation-item ${String(conversation.id) === selectedId ? 'selected' : ''}`}
+          aria-pressed={String(conversation.id) === selectedId}
           onClick={() => setSearchParams({ conversation: conversation.id })}>
           <UserAvatar person={conversationPerson(conversation)} />
           <span className="conversation-summary"><span className="conversation-meta"><strong>{conversationTitle(conversation)}</strong>{conversation.lastActivityAt && <time>{formatListTime(conversation.lastActivityAt)}</time>}</span><small>{conversation.lastMessage?.content || (conversation.type === 'GROUP' ? `${conversation.memberCount} thành viên` : `@${conversation.otherUser.username}`)}</small></span>
@@ -116,7 +129,7 @@ export default function Home() {
               typingEvents={typingEvents} onRead={() => clearUnread(selected.id)}
               onConversationUpdated={updated => setConversations(current => current.map(item => item.id === updated.id ? updated : item))}
               onBack={() => setSearchParams({})}
-              onLeft={() => { setConversations(current => current.filter(item => item.id !== selected.id)); setSearchParams({}) }} />
+              onLeft={removeLeftConversation} />
           : <div className="conversation-placeholder"><span className="hero-chat-icon"><Icon name="sparkles" size={34}/></span><h2>Xin chào, {user?.displayName || user?.username}</h2><p>Chọn một cuộc trò chuyện ở bên trái hoặc tìm người mới để bắt đầu kết nối.</p><Link className="action-link" to="/users"><Icon name="search" size={18}/> Tìm người dùng</Link></div>}
       </section>
     </main>
@@ -322,14 +335,15 @@ function ChatRoom({ conversation, currentUser, webSocketStatus, messageEvents, r
   }
 
   return <div className="chat-room">
-    <div className="selected-conversation"><button className="icon-button mobile-back" aria-label="Quay lại danh sách" onClick={onBack}><Icon name="back"/></button><div className="presence-avatar"><UserAvatar person={conversationPerson(conversation)} />{conversation.type === 'DIRECT' && conversation.otherUser.online && <span className="online-dot" aria-label="Online" />}</div><div className="conversation-header-text"><h2>{conversationTitle(conversation)}</h2><div className="muted">{conversation.type === 'GROUP' ? `${conversation.memberCount} thành viên` : presenceLabel(conversation.otherUser)} <span className={`connection-dot ${webSocketStatus.toLowerCase()}`}/> {connectionLabel(webSocketStatus)}</div>{typingName && <div className="typing-indicator"><span/><span/><span/> {typingName} đang nhập</div>}</div>{conversation.type === 'GROUP' && <button className="icon-button group-info-button" aria-label="Thông tin nhóm" title="Thông tin nhóm" onClick={() => setShowGroupInfo(value => !value)}><Icon name="info"/></button>}</div>
-    {showGroupInfo && <GroupInfo conversation={conversation} currentUser={currentUser}
-      onUpdated={onConversationUpdated} onLeft={onLeft} />}
+    <div className="selected-conversation"><button className="icon-button mobile-back" aria-label="Quay lại danh sách" onClick={onBack}><Icon name="back"/></button><div className="presence-avatar"><UserAvatar person={conversationPerson(conversation)} />{conversation.type === 'DIRECT' && conversation.otherUser.online && <span className="online-dot" aria-label="Online" />}</div><div className="conversation-header-text"><h2>{conversationTitle(conversation)}</h2><div className="muted">{conversation.type === 'GROUP' ? `${conversation.memberCount} thành viên` : presenceLabel(conversation.otherUser)} <span className={`connection-dot ${webSocketStatus.toLowerCase()}`} aria-hidden="true"/> {connectionLabel(webSocketStatus)}</div>{typingName && <div className="typing-indicator" role="status"><span/><span/><span/> {typingName} đang nhập</div>}</div><button className="icon-button group-info-button" aria-label={conversation.type === 'GROUP' ? 'Thông tin nhóm' : 'Thông tin người dùng'} title="Thông tin" aria-expanded={showGroupInfo} onClick={() => setShowGroupInfo(value => !value)}><Icon name="info"/></button></div>
+    {showGroupInfo && (conversation.type === 'GROUP'
+      ? <GroupInfo conversation={conversation} currentUser={currentUser} onUpdated={onConversationUpdated} onLeft={onLeft} onClose={() => setShowGroupInfo(false)} />
+      : <DirectConversationInfo conversation={conversation} onDeleted={onLeft} onClose={() => setShowGroupInfo(false)} />)}
     <div className="message-list" ref={listRef} onScroll={event => {
       shouldAutoScrollRef.current = nearBottom()
       if (event.currentTarget.scrollTop < 80) loadOlder()
     }}>
-      {loading && <div className="message-loading" aria-label="Đang tải lịch sử">{[1,2,3,4,5].map((item) => <i className={item % 2 ? 'left' : 'right'} key={item}/>)}</div>}
+      {loading && <div className="message-loading" aria-label="Đang tải lịch sử" aria-busy="true" role="status">{[1,2,3,4,5].map((item) => <i aria-hidden="true" className={item % 2 ? 'left' : 'right'} key={item}/>)}</div>}
       {loadingOlder && <div className="older-loading">Đang tải tin nhắn cũ...</div>}
       {!loading && !error && messages.length === 0 && <div className="message-state"><span className="empty-icon"><Icon name="chat" size={28}/></span><strong>Bắt đầu cuộc trò chuyện</strong><p>Một lời chào thân thiện luôn là khởi đầu tuyệt vời.</p></div>}
       {!loading && messages.map((message, index) => {
@@ -360,6 +374,11 @@ function CreateGroupModal({ onClose, onCreated }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   useEffect(() => {
+    const closeOnEscape = event => { if (event.key === 'Escape' && !saving) onClose() }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [onClose, saving])
+  useEffect(() => {
     if (!query.trim()) return setResults([])
     const controller = new AbortController()
     const timer = setTimeout(() => api.get('/users/search', { params: { q: query.trim(), size: 10 }, signal: controller.signal })
@@ -374,8 +393,8 @@ function CreateGroupModal({ onClose, onCreated }) {
     } catch (err) { setError(err.response?.data?.message || 'Không thể tạo nhóm.') }
     finally { setSaving(false) }
   }
-  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><form className="group-modal" onSubmit={create}>
-    <h2>Tạo nhóm mới</h2><label>Tên nhóm<input value={name} maxLength={100} required onChange={event => setName(event.target.value)} /></label><label>Ảnh nhóm (URL)<input type="url" value={avatarUrl} maxLength={500} onChange={event => setAvatarUrl(event.target.value)} /></label>
+  return <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !saving) onClose() }}><form className="group-modal" role="dialog" aria-modal="true" aria-labelledby="create-group-title" onSubmit={create}>
+    <div className="modal-header"><div><span className="eyebrow">Cuộc trò chuyện mới</span><h2 id="create-group-title">Tạo nhóm mới</h2></div><button type="button" className="icon-button" aria-label="Đóng" disabled={saving} onClick={onClose}><Icon name="close"/></button></div><label>Tên nhóm<input autoFocus value={name} maxLength={100} required onChange={event => setName(event.target.value)} /></label><label>Ảnh nhóm (URL)<input type="url" value={avatarUrl} maxLength={500} onChange={event => setAvatarUrl(event.target.value)} /></label>
     <label>Chọn thành viên<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm username hoặc tên..." /></label>
     <div className="selected-members">{selected.map(user => <button type="button" key={user.id} onClick={() => setSelected(current => current.filter(item => item.id !== user.id))}>{user.displayName} ×</button>)}</div>
     <div className="member-search-results">{results.filter(user => !selected.some(item => item.id === user.id)).map(user => <button type="button" key={user.id} onClick={() => setSelected(current => current.concat(user))}><UserAvatar person={user} /> {user.displayName} <span>@{user.username}</span></button>)}</div>
@@ -383,13 +402,52 @@ function CreateGroupModal({ onClose, onCreated }) {
   </form></div>
 }
 
-function GroupInfo({ conversation, currentUser, onUpdated, onLeft }) {
+function DirectConversationInfo({ conversation, onDeleted, onClose }) {
+  const toast = useToast()
+  const person = conversation.otherUser
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [error, setError] = useState('')
+  const remove = async () => {
+    if (deleting) return
+    setDeleting(true)
+    setError('')
+    try {
+      await api.delete(`/conversations/${conversation.id}`)
+      onDeleted(conversation.id)
+      toast('Đã xóa cuộc trò chuyện.')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Không thể xóa cuộc trò chuyện. Vui lòng thử lại.')
+      setConfirmDelete(false)
+    } finally {
+      setDeleting(false)
+    }
+  }
+  return <aside className="group-info-panel contact-info-panel" aria-label="Thông tin người dùng">
+    <button type="button" className="icon-button info-close" aria-label="Đóng thông tin" onClick={onClose}><Icon name="close"/></button>
+    <div className="contact-profile"><UserAvatar person={person} /><h3>{person.displayName}</h3><p>{presenceLabel(person)}</p></div>
+    <div className="contact-detail-list">
+      <div><span className="contact-detail-icon"><Icon name="user" size={18}/></span><span><strong>@{person.username}</strong><small>Tên người dùng</small></span></div>
+      <div><span className="contact-detail-icon"><Icon name="info" size={18}/></span><span><strong>{person.bio || 'Chưa có phần giới thiệu'}</strong><small>Giới thiệu</small></span></div>
+      <div><span className="contact-detail-icon"><Icon name="users" size={18}/></span><span><strong>{person.commonGroupCount || 0} nhóm chung</strong><small>Nhóm có cả hai người tham gia</small></span></div>
+    </div>
+    {error && <div className="error" role="alert">{error}</div>}
+    <button type="button" className="contact-danger-action" onClick={() => setConfirmDelete(true)}><Icon name="trash" size={19}/><span><strong>Xóa cuộc trò chuyện</strong><small>Xóa toàn bộ tin nhắn của cuộc trò chuyện này</small></span></button>
+    {confirmDelete && <div className="modal-backdrop leave-group-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !deleting) setConfirmDelete(false) }}><div className="leave-group-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-chat-title" aria-describedby="delete-chat-description"><span className="eyebrow">Xác nhận xóa</span><h2 id="delete-chat-title">Bạn có chắc chắn muốn xóa cuộc trò chuyện?</h2><p id="delete-chat-description">Toàn bộ tin nhắn giữa bạn và <strong>{person.displayName}</strong> sẽ bị xóa cho cả hai người. Thao tác này không thể hoàn tác.</p><div className="modal-actions"><button autoFocus type="button" className="secondary" disabled={deleting} onClick={() => setConfirmDelete(false)}>Hủy</button><button type="button" className="danger" disabled={deleting} onClick={remove}>{deleting ? 'Đang xóa...' : 'Xóa cuộc trò chuyện'}</button></div></div></div>}
+  </aside>
+}
+
+function GroupInfo({ conversation, currentUser, onUpdated, onLeft, onClose }) {
+  const toast = useToast()
   const [members, setMembers] = useState([])
   const [name, setName] = useState(conversation.name)
   const [avatarUrl, setAvatarUrl] = useState(conversation.avatarUrl || '')
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [error, setError] = useState('')
+  const [addingUserId, setAddingUserId] = useState(null)
+  const [leaving, setLeaving] = useState(false)
+  const [confirmLeave, setConfirmLeave] = useState(false)
   const canManage = conversation.currentUserRole === 'OWNER' || conversation.currentUserRole === 'ADMIN'
   const load = () => api.get(`/conversations/${conversation.id}/members`).then(({ data }) => setMembers(data))
     .catch(err => setError(err.response?.data?.message || 'Không thể tải thành viên.'))
@@ -408,11 +466,44 @@ function GroupInfo({ conversation, currentUser, onUpdated, onLeft }) {
     const { data } = await api.get(`/conversations/${conversation.id}`)
     onUpdated(data)
   })
-  const leave = () => action(async () => { await api.post(`/conversations/${conversation.id}/leave`); onLeft() })
-  return <aside className="group-info-panel"><h3>Thông tin nhóm</h3>{canManage && <div className="group-name-fields"><div className="group-name-edit"><input value={name} maxLength={100} onChange={event => setName(event.target.value)} /><button onClick={save}>Lưu</button></div><input type="url" placeholder="URL ảnh nhóm" value={avatarUrl} maxLength={500} onChange={event => setAvatarUrl(event.target.value)} /></div>}
-    {canManage && <><input type="search" placeholder="Thêm thành viên..." value={query} onChange={event => setQuery(event.target.value)} /><div className="member-search-results">{results.filter(user => !members.some(member => member.userId === user.id)).map(user => <button key={user.id} onClick={() => action(() => api.post(`/conversations/${conversation.id}/members/${user.id}`))}>{user.displayName} · Thêm</button>)}</div></>}
+  const addMember = async user => {
+    if (addingUserId !== null) return
+    setAddingUserId(user.id)
+    setError('')
+    try {
+      const { data: member } = await api.post(`/conversations/${conversation.id}/members/${user.id}`)
+      setMembers(current => current.some(item => item.userId === member.userId) ? current : current.concat(member))
+      setQuery('')
+      setResults([])
+      const { data: updatedConversation } = await api.get(`/conversations/${conversation.id}`)
+      onUpdated(updatedConversation)
+      toast(`Đã thêm ${member.displayName} vào nhóm.`)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Không thể thêm thành viên. Vui lòng thử lại.')
+    } finally {
+      setAddingUserId(null)
+    }
+  }
+  const leave = async () => {
+    if (leaving) return
+    setLeaving(true)
+    setError('')
+    try {
+      await api.post(`/conversations/${conversation.id}/leave`)
+      onLeft(conversation.id)
+      toast('Bạn đã rời nhóm và vẫn đang đăng nhập.')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Không thể rời nhóm. Vui lòng thử lại.')
+      setConfirmLeave(false)
+    } finally {
+      setLeaving(false)
+    }
+  }
+  return <aside className="group-info-panel"><button type="button" className="icon-button info-close" aria-label="Đóng thông tin nhóm" onClick={onClose}><Icon name="close"/></button><h3>Thông tin nhóm</h3>{canManage && <div className="group-name-fields"><div className="group-name-edit"><input value={name} maxLength={100} onChange={event => setName(event.target.value)} /><button onClick={save}>Lưu</button></div><input type="url" placeholder="URL ảnh nhóm" value={avatarUrl} maxLength={500} onChange={event => setAvatarUrl(event.target.value)} /></div>}
+    {canManage && <><label className="group-member-search">Thêm thành viên<input type="search" placeholder="Tìm username hoặc tên..." value={query} onChange={event => setQuery(event.target.value)} /></label><div className="member-search-results">{results.filter(user => !members.some(member => member.userId === user.id)).map(user => <button type="button" key={user.id} disabled={addingUserId !== null} onClick={() => addMember(user)}><UserAvatar person={user} /><span><strong>{user.displayName}</strong><small>@{user.username}</small></span><span className="member-add-label">{addingUserId === user.id ? 'Đang thêm...' : 'Thêm'}</span></button>)}</div></>}
     <div className="group-member-list">{members.map(member => <div key={member.userId}><UserAvatar person={member} /><span><strong>{member.displayName}</strong><small>{member.role}</small></span>{conversation.currentUserRole === 'OWNER' && member.userId !== currentUser.id && member.role !== 'OWNER' && <button className="secondary" onClick={() => action(() => api.patch(`/conversations/${conversation.id}/members/${member.userId}/role`, { role: member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN' }))}>{member.role === 'ADMIN' ? 'Hạ quyền' : 'Admin'}</button>}{canManage && member.userId !== currentUser.id && member.role !== 'OWNER' && <button className="danger" onClick={() => action(() => api.delete(`/conversations/${conversation.id}/members/${member.userId}`))}>Xóa</button>}{conversation.currentUserRole === 'OWNER' && member.userId !== currentUser.id && <button className="secondary" onClick={() => transfer(member.userId)}>Chuyển owner</button>}</div>)}</div>
-    {error && <div className="error">{error}</div>}<button className="danger leave-group" onClick={leave}>Rời nhóm</button>
+    {error && <div className="error" role="alert">{error}</div>}<button type="button" className="danger leave-group" onClick={() => setConfirmLeave(true)}>Rời nhóm</button>
+    {confirmLeave && <div className="modal-backdrop leave-group-backdrop" onMouseDown={event => { if (event.target === event.currentTarget && !leaving) setConfirmLeave(false) }}><div className="leave-group-dialog" role="alertdialog" aria-modal="true" aria-labelledby="leave-group-title" aria-describedby="leave-group-description"><span className="eyebrow">Xác nhận thao tác</span><h2 id="leave-group-title">Bạn có chắc chắn muốn rời nhóm không?</h2><p id="leave-group-description">Bạn sẽ không còn xem hoặc gửi tin nhắn trong nhóm <strong>{conversation.name}</strong>. Tài khoản của bạn vẫn được đăng nhập.</p><div className="modal-actions"><button autoFocus type="button" className="secondary" disabled={leaving} onClick={() => setConfirmLeave(false)}>Không, ở lại</button><button type="button" className="danger" disabled={leaving} onClick={leave}>{leaving ? 'Đang rời nhóm...' : 'Có, rời nhóm'}</button></div></div></div>}
   </aside>
 }
 

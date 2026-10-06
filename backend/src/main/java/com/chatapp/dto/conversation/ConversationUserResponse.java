@@ -7,6 +7,8 @@ public record ConversationUserResponse(
         String username,
         String displayName,
         String avatarUrl,
+        String bio,
+        long commonGroupCount,
         boolean online,
         Instant lastSeenAt
 ) {}

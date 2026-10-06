@@ -4,6 +4,7 @@ import com.chatapp.entity.Conversation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
@@ -31,4 +32,19 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Conversation c where c.id = :id")
     Optional<Conversation> findByIdForUpdate(@Param("id") Long id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "delete from conversations where id = :id", nativeQuery = true)
+    void deleteConversationById(@Param("id") Long id);
+
+    @Query("""
+            select count(c) from Conversation c
+            where c.group = true
+              and exists (select first.id from ConversationMember first
+                          where first.conversation = c and first.user.id = :firstUserId)
+              and exists (select second.id from ConversationMember second
+                          where second.conversation = c and second.user.id = :secondUserId)
+            """)
+    long countCommonGroups(@Param("firstUserId") Long firstUserId,
+                           @Param("secondUserId") Long secondUserId);
 }

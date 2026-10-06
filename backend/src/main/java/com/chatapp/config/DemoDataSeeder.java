@@ -31,8 +31,8 @@ public class DemoDataSeeder implements CommandLineRunner {
         if (userPassword.length() < 8 || adminPassword.length() < 8) {
             throw new IllegalStateException("Demo seed passwords must contain at least 8 characters");
         }
-        createIfMissing("demo", "demo@example.local", "Demo User", Role.USER, userPassword);
-        createIfMissing("admin", "admin@example.local", "Demo Admin", Role.ADMIN, adminPassword);
+        createIfMissing("userdemo", "userdemo@example.local", "User Demo", Role.USER, userPassword);
+        createIfMissing("admindemo", "admindemo@example.local", "Admin Demo", Role.ADMIN, adminPassword);
     }
 
     private void createIfMissing(String username, String email, String displayName, Role role, String password) {

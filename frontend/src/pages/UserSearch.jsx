@@ -70,7 +70,7 @@ export default function UserSearch() {
   return (
     <div className="home-page">
       <AppHeader />
-      <main className="page-content">
+      <main id="main-content" className="page-content" tabIndex="-1">
         <section className="search-card">
           <h1>Tìm người dùng</h1>
           <label htmlFor="user-search">Username hoặc tên hiển thị</label>
@@ -81,7 +81,7 @@ export default function UserSearch() {
           {!debouncedQuery && !loading && (
             <div className="state-card">Nhập username hoặc tên hiển thị để bắt đầu.</div>
           )}
-          {loading && <div className="state-card">Đang tìm kiếm...</div>}
+          {loading && <div className="state-card" role="status" aria-busy="true">Đang tìm kiếm...</div>}
           {error && <div className="error" role="alert">{error}</div>}
           {!loading && !error && result?.content.length === 0 && (
             <div className="state-card">Không tìm thấy người dùng phù hợp.</div>

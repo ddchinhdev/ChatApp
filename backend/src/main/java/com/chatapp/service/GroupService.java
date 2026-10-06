@@ -5,6 +5,7 @@ import com.chatapp.entity.*;
 import com.chatapp.exception.BusinessException;
 import com.chatapp.repository.ConversationMemberRepository;
 import com.chatapp.repository.ConversationRepository;
+import com.chatapp.repository.MessageRepository;
 import com.chatapp.repository.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,15 +22,17 @@ import java.util.Set;
 public class GroupService {
     private final ConversationRepository conversations;
     private final ConversationMemberRepository members;
+    private final MessageRepository messages;
     private final UserRepository users;
     private final ConversationService conversationService;
     private final ApplicationEventPublisher eventPublisher;
 
     public GroupService(ConversationRepository conversations, ConversationMemberRepository members,
-                        UserRepository users, ConversationService conversationService,
+                        MessageRepository messages, UserRepository users, ConversationService conversationService,
                         ApplicationEventPublisher eventPublisher) {
         this.conversations = conversations;
         this.members = members;
+        this.messages = messages;
         this.users = users;
         this.conversationService = conversationService;
         this.eventPublisher = eventPublisher;
@@ -140,7 +143,12 @@ public class GroupService {
             }
             group.setLastMessage(null);
             conversations.saveAndFlush(group);
-            conversations.delete(group);
+            // Delete dependants explicitly for both MySQL and the H2 integration-test schema.
+            // Bulk deletes also avoid Hibernate validating managed Message references against
+            // a Conversation that has already been marked as removed.
+            members.deleteAllByConversationId(conversationId);
+            messages.deleteAllByConversationId(conversationId);
+            conversations.deleteConversationById(conversationId);
             return;
         }
         members.delete(membership);

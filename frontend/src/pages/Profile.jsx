@@ -61,10 +61,10 @@ export default function Profile() {
   return (
     <div className="home-page">
       <AppHeader />
-      <main className="page-content">
+      <main id="main-content" className="page-content" tabIndex="-1">
         <section className="profile-card">
           <h1>Hồ sơ của tôi</h1>
-          {loading && <div className="state-card">Đang tải hồ sơ...</div>}
+          {loading && <div className="state-card" role="status" aria-busy="true">Đang tải hồ sơ...</div>}
           {!loading && (
             <form onSubmit={submit}>
               <div className="profile-summary">

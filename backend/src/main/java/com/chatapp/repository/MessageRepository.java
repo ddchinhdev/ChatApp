@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
@@ -53,4 +54,8 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findMessagesForSync(@Param("userId") Long userId,
                                       @Param("afterMessageId") Long afterMessageId,
                                       Pageable pageable);
+
+    @Modifying(flushAutomatically = true)
+    @Query("delete from Message m where m.conversation.id = :conversationId")
+    void deleteAllByConversationId(@Param("conversationId") Long conversationId);
 }

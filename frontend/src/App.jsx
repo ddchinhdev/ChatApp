@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import ProtectedRoute from './auth/ProtectedRoute'
 import AdminRoute from './auth/AdminRoute'
 
@@ -15,8 +15,11 @@ const AdminUserDetail = lazy(() => import('./pages/admin/AdminUserDetail'))
 const AdminAudit = lazy(() => import('./pages/admin/AdminAudit'))
 
 export default function App() {
+  const location = useLocation()
+  const backgroundLocation = location.state?.backgroundLocation
+
   return (
-    <Suspense fallback={<div className="route-loader" role="status"><span className="route-loader-mark"/><span>Đang mở ChatApp…</span></div>}><Routes>
+    <Suspense fallback={<div className="route-loader" role="status"><span className="route-loader-mark"/><span>Đang mở ChatApp…</span></div>}><Routes location={backgroundLocation || location}>
       <Route path="/" element={<Navigate to="/chat" replace />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -36,6 +39,11 @@ export default function App() {
         <Route path="users/:id" element={<AdminUserDetail />} />
         <Route path="audit" element={<AdminAudit />} />
       </Route>
-    </Routes></Suspense>
+    </Routes>
+    {backgroundLocation && (
+      <Routes>
+        <Route path="/users" element={<ProtectedRoute><UserSearch modal /></ProtectedRoute>} />
+      </Routes>
+    )}</Suspense>
   )
 }

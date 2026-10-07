@@ -1,9 +1,10 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import Icon from './Icon'
 
 export default function AppHeader() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { logout, user } = useAuth()
 
   const handleLogout = () => {
@@ -18,7 +19,7 @@ export default function AppHeader() {
       <NavLink className="brand" to="/chat"><span className="brand-mark"><Icon name="chat" size={19}/></span><strong>ChatApp</strong></NavLink>
       <nav className="main-nav" aria-label="Điều hướng chính">
         <NavLink to="/chat"><Icon name="chat"/><span>Trò chuyện</span></NavLink>
-        <NavLink to="/users"><Icon name="search"/><span>Tìm người</span></NavLink>
+        <NavLink to="/users" state={{ backgroundLocation: location }}><Icon name="search"/><span>Tìm người</span></NavLink>
         <NavLink to="/profile"><Icon name="user"/><span>Hồ sơ</span></NavLink>
         {user?.role === 'ADMIN' && <NavLink to="/admin"><Icon name="shield"/><span>Quản trị</span></NavLink>}
       </nav>

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import AppHeader from '../components/AppHeader'
 import api from '../api'
@@ -9,9 +9,11 @@ import { promoteReceipt, sumUnread } from '../receipt'
 import { createTypingController, friendlyLastSeen } from '../typing'
 import Icon from '../components/Icon'
 import { useToast } from '../components/Toast'
+import { dayKey, formatDate, formatListTime, formatTime, parseApiDateTime, toDateTimeAttribute } from '../dateTime'
 
 export default function Home() {
   const { user, webSocketStatus } = useAuth()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
@@ -57,7 +59,7 @@ export default function Home() {
       lastActivityAt: message.createdAt,
       unreadCount: countUnread ? (item.unreadCount || 0) + 1 : item.unreadCount,
     } : item)
-    .sort((a, b) => new Date(b.lastActivityAt) - new Date(a.lastActivityAt)))
+    .sort((a, b) => parseApiDateTime(b.lastActivityAt) - parseApiDateTime(a.lastActivityAt)))
 
   useEffect(() => webSocketService.subscribeDestination('/user/queue/messages', message => {
     const incoming = message.senderId !== user?.id
@@ -108,10 +110,10 @@ export default function Home() {
     <AppHeader />
     <main id="main-content" className={`chat-layout ${selected ? 'has-selection' : ''}`} tabIndex="-1">
       <aside className="conversation-sidebar" aria-label="Danh sách cuộc trò chuyện">
-        <div className="conversation-heading"><div><span className="eyebrow">Tin nhắn</span><h1>Trò chuyện {totalUnread > 0 && <span className="total-unread">{totalUnread}</span>}</h1></div><div className="heading-actions"><button className="icon-button" onClick={() => setShowCreateGroup(true)} aria-label="Tạo nhóm" title="Tạo nhóm"><Icon name="users"/></button><Link className="icon-button primary" to="/users" aria-label="Tìm người để trò chuyện" title="Tìm người"><Icon name="plus"/></Link></div></div>
+        <div className="conversation-heading"><div><span className="eyebrow">Tin nhắn</span><h1>Trò chuyện {totalUnread > 0 && <span className="total-unread">{totalUnread}</span>}</h1></div><div className="heading-actions"><button className="icon-button" onClick={() => setShowCreateGroup(true)} aria-label="Tạo nhóm" title="Tạo nhóm"><Icon name="users"/></button><Link className="icon-button primary" to="/users" state={{ backgroundLocation: location }} aria-label="Tìm người để trò chuyện" title="Tìm người"><Icon name="plus"/></Link></div></div>
         {loading && <div className="conversation-skeleton" aria-label="Đang tải cuộc trò chuyện" aria-busy="true" role="status">{[1,2,3,4,5].map(item => <div className="skeleton-row" key={item} aria-hidden="true"><i/><span><b/><b/></span></div>)}</div>}
         {error && <div className="error" role="alert">{error}</div>}
-        {!loading && !error && conversations.length === 0 && <div className="sidebar-state"><span className="empty-icon"><Icon name="chat" size={28}/></span><strong>Chưa có cuộc trò chuyện</strong><p>Tìm một người bạn và gửi lời chào đầu tiên.</p><Link className="text-link" to="/users">Tìm người dùng</Link></div>}
+        {!loading && !error && conversations.length === 0 && <div className="sidebar-state"><span className="empty-icon"><Icon name="chat" size={28}/></span><strong>Chưa có cuộc trò chuyện</strong><p>Tìm một người bạn và gửi lời chào đầu tiên.</p><Link className="text-link" to="/users" state={{ backgroundLocation: location }}>Tìm người dùng</Link></div>}
         {!loading && !error && conversations.map(conversation => <button key={conversation.id}
           className={`conversation-item ${String(conversation.id) === selectedId ? 'selected' : ''}`}
           aria-pressed={String(conversation.id) === selectedId}
@@ -130,7 +132,7 @@ export default function Home() {
               onConversationUpdated={updated => setConversations(current => current.map(item => item.id === updated.id ? updated : item))}
               onBack={() => setSearchParams({})}
               onLeft={removeLeftConversation} />
-          : <div className="conversation-placeholder"><span className="hero-chat-icon"><Icon name="sparkles" size={34}/></span><h2>Xin chào, {user?.displayName || user?.username}</h2><p>Chọn một cuộc trò chuyện ở bên trái hoặc tìm người mới để bắt đầu kết nối.</p><Link className="action-link" to="/users"><Icon name="search" size={18}/> Tìm người dùng</Link></div>}
+          : <div className="conversation-placeholder"><span className="hero-chat-icon"><Icon name="sparkles" size={34}/></span><h2>Xin chào, {user?.displayName || user?.username}</h2><p>Chọn một cuộc trò chuyện ở bên trái hoặc tìm người mới để bắt đầu kết nối.</p><Link className="action-link" to="/users" state={{ backgroundLocation: location }}><Icon name="search" size={18}/> Tìm người dùng</Link></div>}
       </section>
     </main>
     {showCreateGroup && <CreateGroupModal onClose={() => setShowCreateGroup(false)} onCreated={group => {
@@ -335,7 +337,7 @@ function ChatRoom({ conversation, currentUser, webSocketStatus, messageEvents, r
   }
 
   return <div className="chat-room">
-    <div className="selected-conversation"><button className="icon-button mobile-back" aria-label="Quay lại danh sách" onClick={onBack}><Icon name="back"/></button><div className="presence-avatar"><UserAvatar person={conversationPerson(conversation)} />{conversation.type === 'DIRECT' && conversation.otherUser.online && <span className="online-dot" aria-label="Online" />}</div><div className="conversation-header-text"><h2>{conversationTitle(conversation)}</h2><div className="muted">{conversation.type === 'GROUP' ? `${conversation.memberCount} thành viên` : presenceLabel(conversation.otherUser)} <span className={`connection-dot ${webSocketStatus.toLowerCase()}`} aria-hidden="true"/> {connectionLabel(webSocketStatus)}</div>{typingName && <div className="typing-indicator" role="status"><span/><span/><span/> {typingName} đang nhập</div>}</div><button className="icon-button group-info-button" aria-label={conversation.type === 'GROUP' ? 'Thông tin nhóm' : 'Thông tin người dùng'} title="Thông tin" aria-expanded={showGroupInfo} onClick={() => setShowGroupInfo(value => !value)}><Icon name="info"/></button></div>
+    <div className="selected-conversation"><button type="button" className="icon-button mobile-back" aria-label="Quay lại danh sách" onClick={onBack}><Icon name="back"/></button><div className="presence-avatar"><UserAvatar person={conversationPerson(conversation)} />{conversation.type === 'DIRECT' && conversation.otherUser.online && <span className="online-dot" aria-label="Online" />}</div><div className="conversation-header-text"><h2>{conversationTitle(conversation)}</h2><div className="muted">{conversation.type === 'GROUP' ? `${conversation.memberCount} thành viên` : presenceLabel(conversation.otherUser)} <span className={`connection-dot ${webSocketStatus.toLowerCase()}`} aria-hidden="true"/> {connectionLabel(webSocketStatus)}</div>{typingName && <div className="typing-indicator" role="status"><span/><span/><span/> {typingName} đang nhập</div>}</div><button type="button" className="icon-button group-info-button" aria-label={showGroupInfo ? 'Đóng thông tin cuộc trò chuyện' : 'Mở thông tin cuộc trò chuyện'} title={showGroupInfo ? 'Đóng thông tin' : 'Thông tin'} aria-controls="conversation-info-panel" aria-expanded={showGroupInfo} onClick={() => setShowGroupInfo(value => !value)}><Icon name="info"/></button></div>
     {showGroupInfo && (conversation.type === 'GROUP'
       ? <GroupInfo conversation={conversation} currentUser={currentUser} onUpdated={onConversationUpdated} onLeft={onLeft} onClose={() => setShowGroupInfo(false)} />
       : <DirectConversationInfo conversation={conversation} onDeleted={onLeft} onClose={() => setShowGroupInfo(false)} />)}
@@ -352,7 +354,7 @@ function ChatRoom({ conversation, currentUser, webSocketStatus, messageEvents, r
         const own = message.senderId === currentUser?.id
         return <div key={message.id}>
           {showDate && <div className="date-separator"><span>{formatDate(message.createdAt)}</span></div>}
-          {message.system ? <div className="system-message"><span>{message.content}</span></div> : <div className={`message-row ${own ? 'sent' : 'received'}`}><div className="message-bubble">{conversation.type === 'GROUP' && !own && <small className="message-sender">{message.senderDisplayName}</small>}<div>{message.content}</div><time dateTime={message.createdAt}>{formatTime(message.createdAt)}{own ? ` · ${message.deliveryStatus === 'SENDING' ? 'Đang gửi' : message.deliveryStatus === 'FAILED' ? 'Lỗi' : receiptLabel(message.receiptStatus)}` : ''}</time></div></div>}
+          {message.system ? <div className="system-message"><span>{message.content}</span></div> : <div className={`message-row ${own ? 'sent' : 'received'}`}><div className="message-bubble">{conversation.type === 'GROUP' && !own && <small className="message-sender">{message.senderDisplayName}</small>}<div>{message.content}</div><time dateTime={toDateTimeAttribute(message.createdAt)}>{formatTime(message.createdAt)}{own ? ` · ${message.deliveryStatus === 'SENDING' ? 'Đang gửi' : message.deliveryStatus === 'FAILED' ? 'Lỗi' : receiptLabel(message.receiptStatus)}` : ''}</time></div></div>}
         </div>
       })}
     </div>
@@ -423,7 +425,7 @@ function DirectConversationInfo({ conversation, onDeleted, onClose }) {
       setDeleting(false)
     }
   }
-  return <aside className="group-info-panel contact-info-panel" aria-label="Thông tin người dùng">
+  return <aside id="conversation-info-panel" className="group-info-panel contact-info-panel" aria-label="Thông tin người dùng">
     <button type="button" className="icon-button info-close" aria-label="Đóng thông tin" onClick={onClose}><Icon name="close"/></button>
     <div className="contact-profile"><UserAvatar person={person} /><h3>{person.displayName}</h3><p>{presenceLabel(person)}</p></div>
     <div className="contact-detail-list">
@@ -451,7 +453,13 @@ function GroupInfo({ conversation, currentUser, onUpdated, onLeft, onClose }) {
   const canManage = conversation.currentUserRole === 'OWNER' || conversation.currentUserRole === 'ADMIN'
   const load = () => api.get(`/conversations/${conversation.id}/members`).then(({ data }) => setMembers(data))
     .catch(err => setError(err.response?.data?.message || 'Không thể tải thành viên.'))
-  useEffect(load, [conversation.id])
+  useEffect(() => {
+    let active = true
+    api.get(`/conversations/${conversation.id}/members`)
+      .then(({ data }) => { if (active) setMembers(data) })
+      .catch(err => { if (active) setError(err.response?.data?.message || 'Không thể tải thành viên.') })
+    return () => { active = false }
+  }, [conversation.id])
   useEffect(() => {
     if (!query.trim()) return setResults([])
     const controller = new AbortController()
@@ -499,7 +507,7 @@ function GroupInfo({ conversation, currentUser, onUpdated, onLeft, onClose }) {
       setLeaving(false)
     }
   }
-  return <aside className="group-info-panel"><button type="button" className="icon-button info-close" aria-label="Đóng thông tin nhóm" onClick={onClose}><Icon name="close"/></button><h3>Thông tin nhóm</h3>{canManage && <div className="group-name-fields"><div className="group-name-edit"><input value={name} maxLength={100} onChange={event => setName(event.target.value)} /><button onClick={save}>Lưu</button></div><input type="url" placeholder="URL ảnh nhóm" value={avatarUrl} maxLength={500} onChange={event => setAvatarUrl(event.target.value)} /></div>}
+  return <aside id="conversation-info-panel" className="group-info-panel"><button type="button" className="icon-button info-close" aria-label="Đóng thông tin nhóm" onClick={onClose}><Icon name="close"/></button><h3>Thông tin nhóm</h3>{canManage && <div className="group-name-fields"><div className="group-name-edit"><input value={name} maxLength={100} onChange={event => setName(event.target.value)} /><button onClick={save}>Lưu</button></div><input type="url" placeholder="URL ảnh nhóm" value={avatarUrl} maxLength={500} onChange={event => setAvatarUrl(event.target.value)} /></div>}
     {canManage && <><label className="group-member-search">Thêm thành viên<input type="search" placeholder="Tìm username hoặc tên..." value={query} onChange={event => setQuery(event.target.value)} /></label><div className="member-search-results">{results.filter(user => !members.some(member => member.userId === user.id)).map(user => <button type="button" key={user.id} disabled={addingUserId !== null} onClick={() => addMember(user)}><UserAvatar person={user} /><span><strong>{user.displayName}</strong><small>@{user.username}</small></span><span className="member-add-label">{addingUserId === user.id ? 'Đang thêm...' : 'Thêm'}</span></button>)}</div></>}
     <div className="group-member-list">{members.map(member => <div key={member.userId}><UserAvatar person={member} /><span><strong>{member.displayName}</strong><small>{member.role}</small></span>{conversation.currentUserRole === 'OWNER' && member.userId !== currentUser.id && member.role !== 'OWNER' && <button className="secondary" onClick={() => action(() => api.patch(`/conversations/${conversation.id}/members/${member.userId}/role`, { role: member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN' }))}>{member.role === 'ADMIN' ? 'Hạ quyền' : 'Admin'}</button>}{canManage && member.userId !== currentUser.id && member.role !== 'OWNER' && <button className="danger" onClick={() => action(() => api.delete(`/conversations/${conversation.id}/members/${member.userId}`))}>Xóa</button>}{conversation.currentUserRole === 'OWNER' && member.userId !== currentUser.id && <button className="secondary" onClick={() => transfer(member.userId)}>Chuyển owner</button>}</div>)}</div>
     {error && <div className="error" role="alert">{error}</div>}<button type="button" className="danger leave-group" onClick={() => setConfirmLeave(true)}>Rời nhóm</button>
@@ -513,13 +521,6 @@ function UserAvatar({ person }) {
 function conversationTitle(conversation) { return conversation.type === 'GROUP' ? conversation.name : conversation.otherUser.displayName }
 function conversationPerson(conversation) { return conversation.type === 'GROUP' ? { displayName: conversation.name, avatarUrl: conversation.avatarUrl } : conversation.otherUser }
 
-function dayKey(value) { return new Date(value).toLocaleDateString('vi-VN') }
-function formatDate(value) { return new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) }
-function formatTime(value) { return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) }
-function formatListTime(value) {
-  const date = new Date(value), now = new Date()
-  return dayKey(date) === dayKey(now) ? formatTime(date) : date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
-}
 function connectionLabel(status) { return status === 'CONNECTED' ? 'Đã kết nối' : status === 'CONNECTING' ? 'Đang kết nối lại…' : 'Mất kết nối' }
 function presenceLabel(person) {
   if (person.online) return 'Đang online'

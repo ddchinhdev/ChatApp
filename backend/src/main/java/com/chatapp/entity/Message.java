@@ -1,6 +1,7 @@
 package com.chatapp.entity;
 
 import jakarta.persistence.*;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
@@ -35,7 +36,7 @@ public class Message {
 
     @PrePersist
     void onCreate() {
-        createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
+        createdAt = LocalDateTime.now(Clock.systemUTC()).truncatedTo(ChronoUnit.MICROS);
     }
 
     public Long getId() { return id; }

@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api'
 import AppHeader from '../components/AppHeader'
+import Icon from '../components/Icon'
 import { useToast } from '../components/Toast'
 
 const pageSize = 6
 
-export default function UserSearch() {
+export default function UserSearch({ modal = false }) {
   const navigate = useNavigate()
+  const dialogRef = useRef(null)
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [page, setPage] = useState(0)
@@ -16,6 +18,22 @@ export default function UserSearch() {
   const [error, setError] = useState('')
   const [openingUserId, setOpeningUserId] = useState(null)
   const toast = useToast()
+
+  useEffect(() => {
+    if (!modal) return undefined
+    const opener = document.activeElement
+    const previousOverflow = document.body.style.overflow
+    const handleKeyDown = event => {
+      if (event.key === 'Escape') navigate(-1)
+    }
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+      opener?.focus?.()
+    }
+  }, [modal, navigate])
 
   const openConversation = async (userId) => {
     setOpeningUserId(userId)
@@ -67,12 +85,12 @@ export default function UserSearch() {
     return () => controller.abort()
   }, [debouncedQuery, page])
 
-  return (
-    <div className="home-page">
-      <AppHeader />
-      <main id="main-content" className="page-content" tabIndex="-1">
-        <section className="search-card">
-          <h1>Tìm người dùng</h1>
+  const searchCard = (
+        <section ref={dialogRef} className={`search-card ${modal ? 'search-dialog' : ''}`} role={modal ? 'dialog' : undefined} aria-modal={modal ? 'true' : undefined} aria-labelledby="user-search-title">
+          <div className={modal ? 'modal-header' : undefined}>
+            <h1 id="user-search-title">Tìm người dùng</h1>
+            {modal && <button className="icon-button" type="button" onClick={() => navigate(-1)} aria-label="Đóng tìm kiếm"><Icon name="close" /></button>}
+          </div>
           <label htmlFor="user-search">Username hoặc tên hiển thị</label>
           <input id="user-search" type="search" value={query}
                  onChange={event => setQuery(event.target.value)}
@@ -121,6 +139,19 @@ export default function UserSearch() {
             </>
           )}
         </section>
+  )
+
+  if (modal) {
+    return <div className="modal-backdrop search-backdrop" onMouseDown={event => {
+      if (event.target === event.currentTarget) navigate(-1)
+    }}>{searchCard}</div>
+  }
+
+  return (
+    <div className="home-page">
+      <AppHeader />
+      <main id="main-content" className="page-content" tabIndex="-1">
+        {searchCard}
       </main>
     </div>
   )

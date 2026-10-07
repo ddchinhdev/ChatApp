@@ -41,7 +41,9 @@ Dừng bằng `docker compose down`; thêm `-v` nếu muốn xóa volume MySQL l
 
 ## Chạy development
 
-Backend cần `JWT_SECRET`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`; `CORS_ALLOWED_ORIGINS` mặc định là `http://localhost:5173`.
+Backend tự đọc `.env` ở thư mục gốc khi chạy bằng Maven hoặc IntelliJ. Đảm bảo MySQL local đang chạy ở cổng `3306`, sau đó mở class Spring Boot chính và bấm Run; working directory có thể là thư mục gốc hoặc `backend`.
+
+Các biến dùng khi chạy trực tiếp là `JWT_SECRET`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`; `CORS_ALLOWED_ORIGINS` mặc định là `http://localhost:5173`.
 
 ```bash
 cd backend
